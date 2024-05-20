@@ -1,0 +1,222 @@
+
+@Configuration
+@ComponentScan(basePackages = "jeux.emb.dao.jpa")
+public class Config2Jpa {
+
+    @Bean
+    public String titre() {
+        return "Jeux JPA";
+    }
+
+    @Bean
+    public EntityManagerFactory entityManagerFactory() {
+        return Persistence.createEntityManagerFactory("jeux");
+    }
+
+    @Bean
+    @Primary
+    public EntityManager entityManager(EntityManagerFactory emf) {
+        return emf.createEntityManager();
+    }
+}
+
+package jeux;
+
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+
+public class AppliJeux1 {
+    public static void main(String[] args) {
+        try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(Config2Jpa.class)) {
+            // Votre logique de démarrage d'application
+            String titre = context.getBean(String.class);
+            System.out.println("Titre de l'application : " + titre);
+            
+            // Ajoutez ici d'autres logiques si nécessaire pour vérifier que les classes du package dao.jpa sont utilisées.
+        }
+    }
+}
+////////////////////////////////////
+
+//MAPPING 
+package jeux.emb.data;
+
+import javax.persistence.*;
+
+@Entity
+@Table(name = "joueur")
+public class Joueur {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "idjoueur", nullable = false)
+    private int idjoueur;
+
+    @ManyToOne
+    @JoinColumn(name = "idcategorie", nullable = false)
+    private Categorie categorie;
+
+    @Column(name = "pseudo", nullable = false, length = 25)
+    private String pseudo;
+
+    @Column(name = "motdepasse", nullable = false, length = 25)
+    private String motDePasse;
+
+ @Entity
+@Table(name = "categorie")
+public class Categorie {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "idcategorie", nullable = false)
+    private int idcategorie;
+
+    @Column(name = "libelle", nullable = false, length = 25)
+    private String libelle;
+
+    @Column(name = "role", nullable = false, length = 25)
+    private String role;
+
+    @OneToMany(mappedBy = "categorie", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("pseudo ASC")
+    private List<Joueur> joueurs;
+
+
+
+@Entity
+@Table(name = "nombre")
+public class Nombre {
+
+    @Id
+    private int idjoueur;
+
+    private int valeurmaxi;
+    private int nbessaismaxi;
+    private int nbessaisrestants;
+    private int nombremystere;
+    private int borneinf;
+    private int bornesup;
+    private boolean flagpartiegagnee;
+
+
+@Entity
+@Table(name = "pendu")
+public class Pendu {
+
+    @Id
+    private int idjoueur;
+
+    private boolean flagjouerfacile;
+    private int nberreursmaxi;
+    private int nberreursrestantes;
+    private String motmystere;
+    private String resultat;
+    private String lettresjouees;
+
+
+////////////////////////// DAO
+
+@Stateless
+public class DaoCategorie {
+
+    @Inject
+    private EntityManager em;
+
+    // Méthode pour insérer une catégorie
+    public int inserer(Categorie categorie) {
+        em.persist(categorie);
+        em.flush(); // S'assure que l'entité est insérée et que l'ID est généré
+        return categorie.getIdcategorie();
+    }
+
+    // Méthode pour modifier une catégorie
+    public void modifier(Categorie categorie) {
+        em.merge(categorie);
+    }
+
+    // Méthode pour supprimer une catégorie
+    public void supprimer(int idCategorie) {
+        Categorie categorie = em.find(Categorie.class, idCategorie);
+        if (categorie != null) {
+            em.remove(categorie);
+        }
+    }
+
+    // Méthode pour retrouver une catégorie par son ID
+    public Categorie retrouver(int idCategorie) {
+        return em.find(Categorie.class, idCategorie);
+    }
+
+    // Méthode pour lister toutes les catégories, triées par libellé
+    public List<Categorie> listerTout() {
+        TypedQuery<Categorie> query = em.createQuery("SELECT c FROM Categorie c ORDER BY c.libelle", Categorie.class);
+        return query.getResultList();
+    }
+
+
+@Stateless
+public class DaoJoueur {
+
+    @Inject
+    private EntityManager em;
+
+    // Méthode pour insérer un joueur
+    public int inserer(Joueur joueur) {
+        em.persist(joueur);
+        em.flush(); // S'assure que l'entité est insérée et que l'ID est généré
+        return joueur.getIdjoueur();
+    }
+
+    // Méthode pour modifier un joueur
+    public void modifier(Joueur joueur) {
+        em.merge(joueur);
+    }
+
+    // Méthode pour supprimer un joueur
+    public void supprimer(int idJoueur) {
+        Joueur joueur = em.find(Joueur.class, idJoueur);
+        if (joueur != null) {
+            em.remove(joueur);
+        }
+    }
+
+    // Méthode pour retrouver un joueur par son ID
+    public Joueur retrouver(int idJoueur) {
+        return em.find(Joueur.class, idJoueur);
+    }
+
+    // Méthode pour lister tous les joueurs, triés par pseudo
+    public List<Joueur> listerTout() {
+        TypedQuery<Joueur> query = em.createQuery("SELECT j FROM Joueur j ORDER BY j.pseudo", Joueur.class);
+        return query.getResultList();
+    }
+
+    // Méthode pour compter le nombre de joueurs pour une catégorie donnée
+    public int compterPourCategorie(int idCategorie) {
+        TypedQuery<Long> query = em.createQuery("SELECT COUNT(j) FROM Joueur j WHERE j.categorie.idcategorie = :idCategorie", Long.class);
+        query.setParameter("idCategorie", idCategorie);
+        return query.getSingleResult().intValue();
+    }
+
+    // Méthode pour valider l'authentification d'un joueur
+    public Joueur validerAuthentification(String pseudo, String motDePasse) {
+        try {
+            TypedQuery<Joueur> query = em.createQuery("SELECT j FROM Joueur j WHERE j.pseudo = :pseudo AND j.motDePasse = :motDePasse", Joueur.class);
+            query.setParameter("pseudo", pseudo);
+            query.setParameter("motDePasse", motDePasse);
+            return query.getSingleResult();
+        } catch (NoResultException e) {
+            return null;
+        }
+    }
+
+    // Méthode pour vérifier l'unicité du pseudo
+    public boolean verifierUnicitePseudo(String pseudo, int idJoueur) {
+        try {
+            TypedQuery<Long> query = em.createQuery("SELECT COUNT(j) FROM Joueur j WHERE j.pseudo = :pseudo AND j.idjoueur <> :idJoueur", Long.class);
+            query.setParameter("pseudo", pseudo);
+            query.setParameter("idJoueur", idJoueur);
+            return query.getSingleResult() == 0;
+        } catch (NoResultException e) {
+            return false;
+        }
+    }
