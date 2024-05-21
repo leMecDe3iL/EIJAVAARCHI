@@ -1,4 +1,7 @@
 
+Pour avoir accès au Chat GPT que j'ai fais si besoin : https://chatgpt.com/share/036c7cf3-ecb1-4848-8a3b-6794b8a18415
+
+
 @Configuration
 @ComponentScan(basePackages = "jeux.emb.dao.jpa")
 public class Config2Jpa {
